@@ -103,3 +103,15 @@ class QuizResultResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class QuizAnswerSubmission(BaseModel):
+    answers: List[str]
+
+
+class QuizSubmitResponse(BaseModel):
+    resultId: int
+    score: float
+    totalQuestions: int
+    correctAnswers: int
+    noteId: int

@@ -1,15 +1,17 @@
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import os
 import shutil
 from typing import Optional, List
 
 from database import engine, get_db, Base
-from models import Note, Flashcard, Quiz, QuizQuestion
+from models import Note, Flashcard, Quiz, QuizQuestion, QuizResult
 from schemas import (
     NoteUploadResponse, NoteResponse, FlashcardResponse,
     QuizCreateResponse, QuizQuestionResponse, QuizResponse,
+    QuizAnswerSubmission, QuizSubmitResponse,
 )
 from utils import (
     extract_text_from_pdf, extract_text_from_txt, determine_file_type,
@@ -220,6 +222,54 @@ async def get_quiz(quizId: int, db: Session = Depends(get_db)):
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
     return quiz
+
+
+@app.post("/api/quizzes/{quizId}/results", response_model=QuizSubmitResponse)
+async def submit_quiz(quizId: int, submission: QuizAnswerSubmission, db: Session = Depends(get_db)):
+    quiz = db.query(Quiz).filter(Quiz.id == quizId).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+
+    questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quizId).all()
+    if len(submission.answers) != len(questions):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Expected {len(questions)} answers, got {len(submission.answers)}",
+        )
+
+    correct_count = sum(
+        1 for q, a in zip(questions, submission.answers)
+        if q.correct_option.upper() == a.upper()
+    )
+    total = len(questions)
+    score = round((correct_count / total) * 100, 1) if total > 0 else 0
+
+    result = QuizResult(quiz_id=quizId, user_id=None, score=score)
+    db.add(result)
+    db.commit()
+    db.refresh(result)
+
+    return QuizSubmitResponse(
+        resultId=result.id,
+        score=score,
+        totalQuestions=total,
+        correctAnswers=correct_count,
+        noteId=quiz.note_id,
+    )
+
+
+@app.get("/api/progress")
+async def get_progress(db: Session = Depends(get_db)):
+    total_flashcards = db.query(func.count(Flashcard.id)).scalar() or 0
+    total_quizzes = db.query(func.count(QuizResult.id)).scalar() or 0
+    avg_score = db.query(func.avg(QuizResult.score)).scalar() or 0
+
+    return {
+        "totalFlashcards": total_flashcards,
+        "totalQuizzes": total_quizzes,
+        "averageScore": round(avg_score),
+        "studyStreak": 0,
+    }
 
 
 if __name__ == "__main__":
