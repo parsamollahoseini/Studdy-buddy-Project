@@ -3,12 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 import os
 import shutil
-from typing import Optional
+from typing import Optional, List
 
 from database import engine, get_db, Base
-from models import Note
-from schemas import NoteUploadResponse
-from utils import extract_text_from_pdf, extract_text_from_txt, determine_file_type
+from models import Note, Flashcard
+from schemas import NoteUploadResponse, NoteResponse, FlashcardResponse
+from utils import extract_text_from_pdf, extract_text_from_txt, determine_file_type, generate_flashcards
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -122,6 +122,43 @@ async def upload_note(
         title=new_note.title,
         extractedText=extracted_text
     )
+
+
+@app.get("/api/notes/{noteId}", response_model=NoteResponse)
+async def get_note(noteId: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteId).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return note
+
+
+@app.post("/api/notes/{noteId}/flashcards", response_model=List[FlashcardResponse])
+async def create_flashcards(noteId: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteId).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    cards = generate_flashcards(note.extracted_text)
+
+    db_cards = []
+    for c in cards:
+        fc = Flashcard(note_id=noteId, question=c["question"], answer=c["answer"])
+        db.add(fc)
+        db_cards.append(fc)
+
+    db.commit()
+    for fc in db_cards:
+        db.refresh(fc)
+
+    return db_cards
+
+
+@app.get("/api/notes/{noteId}/flashcards", response_model=List[FlashcardResponse])
+async def get_flashcards(noteId: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteId).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
 
 
 if __name__ == "__main__":
