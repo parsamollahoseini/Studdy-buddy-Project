@@ -1,22 +1,19 @@
 # Study Buddy - Smart Study Material Generator
 
-**Capstone II Project - Week 1 MVP**
+**Capstone II Project - Group T25 - Week 5 MVP**
 
 Study Buddy is a web application that helps students create flashcards and quizzes from their study notes. Upload PDF or TXT files, extract text automatically, and generate study materials to improve learning efficiency.
 
-## Team
-
-- **Parsa Mollahoseini** - Project Lead / Full-Stack Developer
-- **Mehrad Bayat** - Backend Developer
-- **Kevin George Buhain** - Frontend Developer
-
-## Features (Week 1 MVP)
+## Features
 
 - Upload PDF and TXT files
 - Automatic text extraction (PyPDF2)
-- Page skeleton for flashcards, quizzes, results, and progress
+- Generate flashcards from notes (rule/keyword-based)
+- Generate quizzes from notes (multiple choice, rule-based)
+- Take quizzes and view scored results
+- Generate flashcards or quiz from the same notes without re-uploading
+- Track progress with dashboard (flashcards created, quizzes taken, avg score)
 - Responsive UI with TailwindCSS
-- RESTful API with FastAPI
 
 ## Tech Stack
 
@@ -26,7 +23,7 @@ Study Buddy is a web application that helps students create flashcards and quizz
 - **TailwindCSS** - Styling
 - **React Router** - Client-side routing
 - **Axios** - HTTP client
-- **Chart.js** - Data visualization (coming soon)
+- **Chart.js** - Data visualization (placeholder ready)
 
 ### Backend
 - **Python FastAPI** - REST API framework
@@ -51,7 +48,7 @@ study-buddy/
 │   ├── models.py      # Database models
 │   ├── schemas.py     # Pydantic schemas
 │   ├── database.py    # Database configuration
-│   ├── utils.py       # Helper functions
+│   ├── utils.py       # Helper functions (text extraction + generation logic)
 │   ├── uploads/       # Uploaded files directory
 │   └── requirements.txt
 └── README.md
@@ -76,9 +73,17 @@ cd study-buddy
 
 ```bash
 cd backend
+
+# Create virtual environment
 python3 -m venv venv
+
+# Activate virtual environment
 source venv/bin/activate
+
+# Install Python dependencies
 pip install -r requirements.txt
+
+# Start the FastAPI server
 uvicorn main:app --reload --port 8000
 ```
 
@@ -92,7 +97,11 @@ Open a new terminal window:
 
 ```bash
 cd frontend
+
+# Install npm dependencies
 npm install
+
+# Start the development server
 npm run dev
 ```
 
@@ -102,15 +111,19 @@ The frontend will run at: `http://localhost:5173`
 
 1. Open your browser and navigate to `http://localhost:5173`
 2. Click "Get Started" to go to the dashboard
-3. Click "Upload Notes"
-4. Select a PDF or TXT file
-5. View the extracted text
+3. Click "Upload Notes" and select a PDF or TXT file
+4. View the extracted text on the note page
+5. Click "Generate Flashcards" — flip through the cards
+6. Click "Generate Quiz from Same Notes" — answer the questions
+7. Submit the quiz and view your score
+8. Visit the Progress page to see your stats
 
 ## API Endpoints
 
 ### Health Check
 ```
 GET /api/health
+→ { "status": "healthy", "message": "Study Buddy API is running", "version": "1.0.0" }
 ```
 
 ### Upload Notes
@@ -118,38 +131,130 @@ GET /api/health
 POST /api/notes/upload
 Content-Type: multipart/form-data
 Parameters: file (PDF/TXT), title (optional)
-Response: { "noteId": 1, "title": "My Notes", "extractedText": "..." }
+→ { "noteId": 1, "title": "My Notes", "extractedText": "..." }
+```
+
+### Get Note
+```
+GET /api/notes/{noteId}
+→ { "id": 1, "title": "My Notes", "source_type": "txt", "extracted_text": "...", "created_at": "..." }
+```
+
+### Generate Flashcards
+```
+POST /api/notes/{noteId}/flashcards
+→ [{ "id": 1, "question": "What is ...?", "answer": "...", "created_at": "..." }, ...]
+```
+
+### Get Flashcards
+```
+GET /api/notes/{noteId}/flashcards
+→ [{ "id": 1, "question": "...", "answer": "...", "created_at": "..." }, ...]
+```
+
+### Generate Quiz
+```
+POST /api/notes/{noteId}/quiz
+→ { "quizId": 1, "title": "Quiz: ...", "questions": [{ "id": 1, "question": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_option": "A" }] }
+```
+
+### Get Quiz
+```
+GET /api/quizzes/{quizId}
+→ { "id": 1, "title": "...", "created_at": "...", "questions": [...] }
+```
+
+### Submit Quiz Results
+```
+POST /api/quizzes/{quizId}/results
+Body: { "answers": ["A", "C", "B", "D", "A"] }
+→ { "resultId": 1, "score": 80.0, "totalQuestions": 5, "correctAnswers": 4, "noteId": 1 }
+```
+
+### Get Progress
+```
+GET /api/progress
+→ { "totalFlashcards": 9, "totalQuizzes": 1, "averageScore": 80, "studyStreak": 0 }
 ```
 
 ## Database Schema
 
-- **users** - User accounts
+The SQLite database includes the following tables:
+
+- **users** - User accounts (for future authentication)
 - **notes** - Uploaded notes and extracted text
-- **flashcards** - Generated flashcards
+- **flashcards** - Generated flashcards (question + answer)
 - **quizzes** - Generated quizzes
-- **quiz_questions** - Questions for each quiz
-- **quiz_results** - Quiz attempt results
+- **quiz_questions** - Multiple choice questions (A/B/C/D options)
+- **quiz_results** - Quiz attempt results with scores
 
 ## Pages
 
-- `/` - Landing page
-- `/dashboard` - Main dashboard
-- `/upload` - Upload notes
-- `/notes/:noteId` - View extracted text and generate materials
-- `/notes/:noteId/flashcards` - Study flashcards
-- `/quizzes/:quizId` - Take quiz
-- `/quizzes/:quizId/results` - View quiz results
-- `/progress` - Progress tracker
-- `/settings` - Settings and about
+| Route | Description |
+|-------|-------------|
+| `/` | Landing page |
+| `/dashboard` | Main dashboard with navigation cards |
+| `/upload` | Upload PDF/TXT notes |
+| `/notes/:noteId` | View extracted text + generate flashcards/quiz |
+| `/notes/:noteId/flashcards` | Study flashcards (flip cards) + generate quiz |
+| `/quizzes/:quizId` | Take quiz (multiple choice) |
+| `/quizzes/:quizId/results` | View score + generate flashcards/retake quiz |
+| `/progress` | Progress dashboard (stats from DB) |
+| `/settings` | Settings and about |
 
-## Next Steps (Week 2+)
+## Demo Flow
 
-- Implement flashcard generation logic (keyword-based)
-- Implement quiz generation logic (rule-based)
-- Add quiz submission and scoring
-- Implement progress tracking API
-- Wire frontend pages to real API data
-- Add Chart.js visualizations
+```
+Upload → View Extracted Text
+  ├─→ Generate Flashcards → Flip through cards → Generate Quiz from Same Notes
+  └─→ Generate Quiz → Answer MCQs → Submit → See Score
+        ├─→ Flashcards from Same Notes
+        ├─→ Retake Quiz (New Questions)
+        └─→ Back to Dashboard
+Progress → Real stats (flashcards created, quizzes taken, avg score)
+```
+
+## Running Both Servers
+
+You need two terminal windows:
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+## Development Notes
+
+- The SQLite database (`study_buddy.db`) is auto-created on first server start
+- Delete `study_buddy.db` and restart the backend if you change database models
+- Uploaded files are stored in `backend/uploads/`
+- Flashcard generation uses rule/keyword-based logic (no AI/NLP in Phase 1)
+- Quiz questions are multiple choice with distractors from other flashcard answers
+
+## Next Steps
+
+- AI/NLP-powered flashcard and quiz generation
+- User authentication and authorization
+- Chart.js visualizations on progress page
+- PostgreSQL for production deployment
+- Study sessions with spaced repetition
+- Export flashcards to Anki/Quizlet
+
+## Team — Group T25
+
+| Name | Role |
+|------|------|
+| **Parsa Mollahoseini** | Project Lead / Full-Stack Developer |
+| **Mehrad Bayat** | Backend Developer |
+| **Kevin George Buhain** | Frontend Developer |
 
 ## License
 
@@ -157,4 +262,4 @@ MIT License - Educational project for Capstone II
 
 ---
 
-**Built by the Study Buddy Team**
+**Built by Group T25 — Parsa Mollahoseini, Mehrad Bayat, Kevin George Buhain**

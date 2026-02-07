@@ -11,12 +11,21 @@ function NoteView() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    // For now, we'll store the note data in localStorage since we don't have a GET endpoint yet
-    const storedNote = localStorage.getItem(`note_${noteId}`);
-    if (storedNote) {
-      setNote(JSON.parse(storedNote));
-    }
-    setLoading(false);
+    const fetchNote = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8000/api/notes/${noteId}`);
+        const data = response.data;
+        setNote({ title: data.title, extractedText: data.extracted_text });
+      } catch {
+        const storedNote = localStorage.getItem(`note_${noteId}`);
+        if (storedNote) {
+          setNote(JSON.parse(storedNote));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNote();
   }, [noteId]);
 
   const handleGenerateFlashcards = async () => {

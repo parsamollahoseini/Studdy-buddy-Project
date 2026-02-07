@@ -1,38 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
+import axios from 'axios';
 
 function QuizView() {
   const { quizId } = useParams();
   const navigate = useNavigate();
+  const [quiz, setQuiz] = useState(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  // Mock data - will be replaced with API call
-  const quiz = {
-    title: 'React Basics Quiz',
-    questions: [
-      {
-        id: 1,
-        question: 'What is React?',
-        options: ['A library', 'A framework', 'A language', 'A database'],
-        correctOption: 'A'
-      },
-      {
-        id: 2,
-        question: 'What is JSX?',
-        options: ['JavaScript XML', 'Java Syntax', 'JSON Extension', 'JavaScript Extra'],
-        correctOption: 'A'
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8000/api/quizzes/${quizId}`);
+        setQuiz(response.data);
+      } catch {
+        setError('Failed to load quiz.');
+      } finally {
+        setLoading(false);
       }
-    ]
-  };
+    };
+    fetchQuiz();
+  }, [quizId]);
 
   const handleAnswer = (option) => {
     setAnswers({ ...answers, [currentQuestion]: option });
   };
 
   const handleNext = () => {
-    if (currentQuestion < quiz.questions.length - 1) {
+    if (quiz && currentQuestion < quiz.questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     }
   };
@@ -43,10 +43,41 @@ function QuizView() {
     }
   };
 
-  const handleSubmit = () => {
-    // Submit answers to backend
-    navigate(`/quizzes/${quizId}/results`);
+  const handleSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const answersArray = quiz.questions.map((_, idx) => answers[idx] || '');
+      const response = await axios.post(
+        `http://localhost:8000/api/quizzes/${quizId}/results`,
+        { answers: answersArray }
+      );
+      localStorage.setItem(`quiz_result_${quizId}`, JSON.stringify(response.data));
+      navigate(`/quizzes/${quizId}/results`);
+    } catch {
+      alert('Failed to submit quiz');
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex items-center justify-center py-20 text-gray-600">Loading quiz...</div>
+      </div>
+    );
+  }
+
+  if (error || !quiz) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="container mx-auto px-6 py-8">
+          <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error || 'Quiz not found.'}</div>
+        </div>
+      </div>
+    );
+  }
 
   const question = quiz.questions[currentQuestion];
   const selectedAnswer = answers[currentQuestion];
@@ -66,20 +97,21 @@ function QuizView() {
             <h2 className="text-2xl mb-6">{question.question}</h2>
 
             <div className="space-y-3">
-              {question.options.map((option, index) => {
-                const optionLetter = String.fromCharCode(65 + index);
+              {['A', 'B', 'C', 'D'].map((letter) => {
+                const optionKey = `option_${letter.toLowerCase()}`;
+                const optionText = question[optionKey];
                 return (
                   <button
-                    key={index}
-                    onClick={() => handleAnswer(optionLetter)}
+                    key={letter}
+                    onClick={() => handleAnswer(letter)}
                     className={`w-full text-left p-4 rounded-lg border-2 transition ${
-                      selectedAnswer === optionLetter
+                      selectedAnswer === letter
                         ? 'border-blue-600 bg-blue-50'
                         : 'border-gray-300 hover:border-blue-400'
                     }`}
                   >
-                    <span className="font-semibold mr-2">{optionLetter}.</span>
-                    {option}
+                    <span className="font-semibold mr-2">{letter}.</span>
+                    {optionText}
                   </button>
                 );
               })}
@@ -98,10 +130,10 @@ function QuizView() {
             {currentQuestion === quiz.questions.length - 1 ? (
               <button
                 onClick={handleSubmit}
-                disabled={Object.keys(answers).length !== quiz.questions.length}
+                disabled={Object.keys(answers).length !== quiz.questions.length || submitting}
                 className="bg-green-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-300"
               >
-                Submit Quiz
+                {submitting ? 'Submitting...' : 'Submit Quiz'}
               </button>
             ) : (
               <button

@@ -1,17 +1,43 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navigation from '../components/Navigation';
+import axios from 'axios';
 
 function QuizResults() {
   const { quizId } = useParams();
   const navigate = useNavigate();
+  const [result, setResult] = useState(null);
+  const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
-  // Mock data - will be replaced with API call
-  const result = {
-    score: 75,
-    totalQuestions: 2,
-    correctAnswers: 1,
-    noteId: '123'
+  useEffect(() => {
+    const stored = localStorage.getItem(`quiz_result_${quizId}`);
+    if (stored) {
+      setResult(JSON.parse(stored));
+    }
+  }, [quizId]);
+
+  const handleRetakeQuiz = async () => {
+    if (!result) return;
+    setGeneratingQuiz(true);
+    try {
+      const response = await axios.post(
+        `http://localhost:8000/api/notes/${result.noteId}/quiz`
+      );
+      navigate(`/quizzes/${response.data.quizId}`);
+    } catch {
+      alert('Failed to generate new quiz');
+      setGeneratingQuiz(false);
+    }
   };
+
+  if (!result) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <div className="flex items-center justify-center py-20 text-gray-600">No results found.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,12 +58,20 @@ function QuizResults() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <button
               onClick={() => navigate(`/notes/${result.noteId}/flashcards`)}
               className="bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 transition"
             >
-              Generate Flashcards
+              Flashcards from Same Notes
+            </button>
+
+            <button
+              onClick={handleRetakeQuiz}
+              disabled={generatingQuiz}
+              className="bg-green-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
+            >
+              {generatingQuiz ? 'Generating...' : 'Retake Quiz (New Questions)'}
             </button>
 
             <button
