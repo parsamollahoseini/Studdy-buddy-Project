@@ -28,7 +28,7 @@ function Settings() {
 
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-2">Version</h3>
-              <p className="text-gray-600">MVP - Week 1 Build</p>
+              <p className="text-gray-600">MVP - Week 5 Build</p>
             </div>
 
             <div className="border-t pt-4">
