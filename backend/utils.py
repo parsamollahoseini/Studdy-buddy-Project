@@ -1,5 +1,6 @@
 import PyPDF2
 import re
+import random
 from typing import Tuple, List
 
 
@@ -136,3 +137,60 @@ def generate_flashcards(text: str) -> List[dict]:
                     used.add(q)
 
     return flashcards[:10]
+
+
+GENERIC_DISTRACTORS = [
+    "None of the above",
+    "All of the above",
+    "This concept is not defined in the text",
+    "A type of unrelated process",
+    "An undefined term",
+    "Not enough information to determine",
+]
+
+
+def generate_quiz_questions(text: str, flashcards: List[dict]) -> List[dict]:
+    if not flashcards:
+        return []
+
+    source = flashcards[:5]
+    all_answers = [fc["answer"] for fc in flashcards]
+    questions = []
+
+    for i, fc in enumerate(source):
+        correct = fc["answer"]
+        if len(correct) > 120:
+            correct = correct[:117] + "..."
+
+        # Build distractors from other flashcard answers + generic pool
+        other_answers = [a for j, a in enumerate(all_answers) if j != i and a != correct]
+        distractors = []
+        for a in other_answers:
+            if len(distractors) >= 3:
+                break
+            truncated = a if len(a) <= 120 else a[:117] + "..."
+            if truncated != correct and truncated not in distractors:
+                distractors.append(truncated)
+
+        pool = list(GENERIC_DISTRACTORS)
+        random.shuffle(pool)
+        for d in pool:
+            if len(distractors) >= 3:
+                break
+            if d != correct and d not in distractors:
+                distractors.append(d)
+
+        options = [correct] + distractors[:3]
+        random.shuffle(options)
+        correct_letter = chr(65 + options.index(correct))  # A, B, C, or D
+
+        questions.append({
+            "question": fc["question"],
+            "option_a": options[0],
+            "option_b": options[1],
+            "option_c": options[2],
+            "option_d": options[3],
+            "correct_option": correct_letter,
+        })
+
+    return questions

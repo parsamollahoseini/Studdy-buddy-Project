@@ -6,9 +6,15 @@ import shutil
 from typing import Optional, List
 
 from database import engine, get_db, Base
-from models import Note, Flashcard
-from schemas import NoteUploadResponse, NoteResponse, FlashcardResponse
-from utils import extract_text_from_pdf, extract_text_from_txt, determine_file_type, generate_flashcards
+from models import Note, Flashcard, Quiz, QuizQuestion
+from schemas import (
+    NoteUploadResponse, NoteResponse, FlashcardResponse,
+    QuizCreateResponse, QuizQuestionResponse, QuizResponse,
+)
+from utils import (
+    extract_text_from_pdf, extract_text_from_txt, determine_file_type,
+    generate_flashcards, generate_quiz_questions,
+)
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -159,6 +165,61 @@ async def get_flashcards(noteId: int, db: Session = Depends(get_db)):
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
     return db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
+
+
+@app.post("/api/notes/{noteId}/quiz", response_model=QuizCreateResponse)
+async def create_quiz(noteId: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteId).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    # Use existing flashcards or generate new ones
+    existing = db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
+    if existing:
+        fc_dicts = [{"question": fc.question, "answer": fc.answer} for fc in existing]
+    else:
+        fc_dicts = generate_flashcards(note.extracted_text)
+        for c in fc_dicts:
+            db.add(Flashcard(note_id=noteId, question=c["question"], answer=c["answer"]))
+
+    quiz_questions = generate_quiz_questions(note.extracted_text, fc_dicts)
+
+    quiz = Quiz(note_id=noteId, title=f"Quiz: {note.title}")
+    db.add(quiz)
+    db.flush()
+
+    db_questions = []
+    for q in quiz_questions:
+        qq = QuizQuestion(
+            quiz_id=quiz.id,
+            question=q["question"],
+            option_a=q["option_a"],
+            option_b=q["option_b"],
+            option_c=q["option_c"],
+            option_d=q["option_d"],
+            correct_option=q["correct_option"],
+        )
+        db.add(qq)
+        db_questions.append(qq)
+
+    db.commit()
+    db.refresh(quiz)
+    for qq in db_questions:
+        db.refresh(qq)
+
+    return QuizCreateResponse(
+        quizId=quiz.id,
+        title=quiz.title,
+        questions=[QuizQuestionResponse.model_validate(qq) for qq in db_questions],
+    )
+
+
+@app.get("/api/quizzes/{quizId}", response_model=QuizResponse)
+async def get_quiz(quizId: int, db: Session = Depends(get_db)):
+    quiz = db.query(Quiz).filter(Quiz.id == quizId).first()
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return quiz
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 
 # Note schemas
@@ -84,6 +84,12 @@ class QuizResponse(BaseModel):
 
 
 # Quiz result schemas
+class QuizCreateResponse(BaseModel):
+    quizId: int
+    title: str
+    questions: List[QuizQuestionResponse] = []
+
+
 class QuizResultCreate(BaseModel):
     quiz_id: int
     user_id: Optional[int] = None
