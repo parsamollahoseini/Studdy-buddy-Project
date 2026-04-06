@@ -7,150 +7,144 @@ function FlashcardsView() {
   const { noteId } = useParams();
   const navigate = useNavigate();
   const [flashcards, setFlashcards] = useState([]);
-  const [currentCard, setCurrentCard] = useState(0);
+  const [current, setCurrent] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
 
   useEffect(() => {
-    const fetchFlashcards = async () => {
-      try {
-        const response = await axios.get(
-          `http://localhost:8000/api/notes/${noteId}/flashcards`
-        );
-        setFlashcards(response.data);
-      } catch {
-        setError('Failed to load flashcards.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchFlashcards();
+    axios.get(`http://localhost:8000/api/notes/${noteId}/flashcards`)
+      .then(r => setFlashcards(r.data))
+      .catch(() => setError('Failed to load flashcards.'))
+      .finally(() => setLoading(false));
   }, [noteId]);
-
-  const handleNext = () => {
-    if (currentCard < flashcards.length - 1) {
-      setCurrentCard(currentCard + 1);
-      setFlipped(false);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentCard > 0) {
-      setCurrentCard(currentCard - 1);
-      setFlipped(false);
-    }
-  };
 
   const handleGenerateQuiz = async () => {
     setGeneratingQuiz(true);
     try {
-      const response = await axios.post(
-        `http://localhost:8000/api/notes/${noteId}/quiz`
-      );
-      navigate(`/quizzes/${response.data.quizId}`);
-    } catch {
-      alert('Failed to generate quiz');
-      setGeneratingQuiz(false);
-    }
+      const r = await axios.post(`http://localhost:8000/api/notes/${noteId}/quiz`);
+      navigate(`/quizzes/${r.data.quizId}`);
+    } catch { alert('Failed to generate quiz'); setGeneratingQuiz(false); }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="flex items-center justify-center py-20 text-gray-600">Loading flashcards...</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div style={{ minHeight: '100vh', background: '#080818' }}><Navigation />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'rgba(255,255,255,0.4)' }}>Loading flashcards...</div>
+    </div>
+  );
 
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-6 py-8">
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg">{error}</div>
-        </div>
+  if (error || flashcards.length === 0) return (
+    <div style={{ minHeight: '100vh', background: '#080818' }}><Navigation />
+      <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'rgba(255,255,255,0.5)' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🃏</div>
+        <p style={{ marginBottom: '1.5rem' }}>{error || 'No flashcards yet. Generate them from your note.'}</p>
+        <button onClick={() => navigate(`/notes/${noteId}`)} className="btn-primary">Back to Note</button>
       </div>
-    );
-  }
+    </div>
+  );
 
-  if (flashcards.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-6 py-8 text-center">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">No Flashcards Yet</h1>
-          <p className="text-gray-600 mb-6">Generate flashcards from your note first.</p>
-          <button
-            onClick={() => navigate(`/notes/${noteId}`)}
-            className="bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition"
-          >
-            Back to Note
-          </button>
-        </div>
-      </div>
-    );
-  }
+  const card = flashcards[current];
+  const progress = ((current + 1) / flashcards.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#080818' }}>
       <Navigation />
-      <div className="container mx-auto px-6 py-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Flashcards</h1>
+      <div className="container mx-auto px-6 py-10" style={{ maxWidth: 700 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h1 style={{
+            fontSize: '1.75rem', fontWeight: 800,
+            background: 'linear-gradient(135deg, #fff, rgba(255,255,255,0.6))',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+          }}>Flashcards</h1>
+          <span style={{ color: 'rgba(255,255,255,0.35)', fontSize: '0.875rem' }}>
+            {current + 1} / {flashcards.length}
+          </span>
+        </div>
 
-        <div className="max-w-2xl mx-auto">
-          <div className="mb-4 text-center text-gray-600">
-            Card {currentCard + 1} of {flashcards.length}
-          </div>
+        {/* Progress bar */}
+        <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 4, height: 4, marginBottom: '2rem', overflow: 'hidden' }}>
+          <div style={{
+            width: `${progress}%`, height: '100%', borderRadius: 4,
+            background: 'linear-gradient(90deg, #3b82f6, #7c3aed)',
+            transition: 'width 0.3s ease',
+          }} />
+        </div>
 
-          <div
-            onClick={() => setFlipped(!flipped)}
-            className="bg-white p-12 rounded-lg shadow-lg cursor-pointer min-h-[300px] flex items-center justify-center hover:shadow-xl transition"
-          >
-            <div className="text-center">
-              <p className="text-sm text-gray-500 mb-4">
-                {flipped ? 'Answer' : 'Question'} (Click to flip)
-              </p>
-              <p className="text-2xl">
-                {flipped ? flashcards[currentCard].answer : flashcards[currentCard].question}
-              </p>
-            </div>
+        {/* Card */}
+        <div
+          onClick={() => setFlipped(!flipped)}
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: '1.5rem', padding: '3rem 2rem',
+            minHeight: 280, cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            textAlign: 'center', transition: 'all 0.2s',
+            boxShadow: flipped ? '0 0 30px rgba(99,102,241,0.15)' : 'none',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(99,102,241,0.35)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}>
+          <div style={{
+            display: 'inline-block',
+            background: flipped ? 'rgba(99,102,241,0.15)' : 'rgba(255,255,255,0.06)',
+            border: `1px solid ${flipped ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius: '2rem', padding: '0.25rem 0.85rem',
+            fontSize: '0.7rem', color: flipped ? '#a78bfa' : 'rgba(255,255,255,0.4)',
+            marginBottom: '1.5rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+          }}>
+            {flipped ? 'Answer' : 'Question'} · click to flip
           </div>
+          <p style={{ fontSize: '1.25rem', color: 'white', lineHeight: 1.6, fontWeight: 500 }}>
+            {flipped ? card.answer : card.question}
+          </p>
+        </div>
 
-          <div className="flex justify-between mt-6">
-            <button
-              onClick={handlePrevious}
-              disabled={currentCard === 0}
-              className="bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-700 transition disabled:bg-gray-300"
-            >
-              Previous
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={currentCard === flashcards.length - 1}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-300"
-            >
-              Next
-            </button>
-          </div>
+        {/* Navigation */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem', gap: '1rem' }}>
+          <button onClick={() => { setCurrent(c => c - 1); setFlipped(false); }} disabled={current === 0}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: '0.75rem',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              color: current === 0 ? 'rgba(255,255,255,0.2)' : 'white',
+              cursor: current === 0 ? 'not-allowed' : 'pointer', fontWeight: 600,
+            }}>← Previous</button>
+          <button onClick={() => { setCurrent(c => c + 1); setFlipped(false); }} disabled={current === flashcards.length - 1}
+            style={{
+              flex: 1, padding: '0.75rem', borderRadius: '0.75rem',
+              background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
+              color: current === flashcards.length - 1 ? 'rgba(255,255,255,0.2)' : 'white',
+              cursor: current === flashcards.length - 1 ? 'not-allowed' : 'pointer', fontWeight: 600,
+            }}>Next →</button>
+        </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              onClick={handleGenerateQuiz}
-              disabled={generatingQuiz}
-              className="bg-green-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
-            >
-              {generatingQuiz ? 'Generating...' : 'Generate Quiz from Same Notes'}
-            </button>
-            <button
-              onClick={() => navigate(`/notes/${noteId}`)}
-              className="bg-gray-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-gray-700 transition"
-            >
-              Back to Note
-            </button>
-          </div>
+        {/* Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
+          <button onClick={handleGenerateQuiz} disabled={generatingQuiz}
+            style={{
+              padding: '0.875rem', borderRadius: '0.75rem',
+              background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+              color: '#6ee7b7', fontWeight: 600, cursor: generatingQuiz ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem', opacity: generatingQuiz ? 0.6 : 1,
+            }}>
+            {generatingQuiz ? 'Generating...' : '🧠 Generate Quiz'}
+          </button>
+          <button onClick={() => window.open(`http://localhost:8000/api/export/flashcards/${noteId}`, '_blank')}
+            style={{
+              padding: '0.875rem', borderRadius: '0.75rem',
+              background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',
+              color: '#a5b4fc', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem',
+            }}>
+            📥 Export CSV
+          </button>
+          <button onClick={() => navigate(`/notes/${noteId}`)}
+            style={{
+              padding: '0.875rem', borderRadius: '0.75rem',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.6)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem',
+            }}>
+            ← Back
+          </button>
         </div>
       </div>
     </div>

@@ -1,73 +1,93 @@
-# Study Buddy - Smart Study Material Generator
+# Study Buddy — Smart Study Material Generator
 
-**Capstone II Project - Group T25 - Week 5 MVP**
+**Capstone II Project · Group T25**
 
-Study Buddy is a web application that helps students create flashcards and quizzes from their study notes. Upload PDF or TXT files, extract text automatically, and generate study materials to improve learning efficiency.
+Study Buddy is a full-stack web application that helps students turn their notes into interactive study materials. Upload a PDF or TXT file, auto-generate flashcards and quizzes, study with a spaced repetition scheduler, track your progress with charts, and export cards to Anki or Quizlet.
+
+---
 
 ## Features
 
-- Upload PDF and TXT files
-- Automatic text extraction (PyPDF2)
-- Generate flashcards from notes (rule/keyword-based)
-- Generate quizzes from notes (multiple choice, rule-based)
-- Take quizzes and view scored results
-- Generate flashcards or quiz from the same notes without re-uploading
-- Track progress with dashboard (flashcards created, quizzes taken, avg score)
-- Responsive UI with TailwindCSS
+- **Upload Notes** — PDF and TXT files with automatic text extraction (PyPDF2)
+- **Flashcard Generation** — Rule/keyword-based flashcard creation from extracted text
+- **Quiz Generation** — Multiple choice quizzes with auto-generated distractors
+- **Spaced Repetition** — SM-2 algorithm study sessions (Again / Hard / Good / Easy ratings)
+- **Progress Dashboard** — Live stats and Chart.js score history visualization
+- **User Authentication** — JWT-based register/login; data scoped per user
+- **CSV Export** — Download flashcards as CSV for Anki or Quizlet import
+- **Responsive UI** — Dark futuristic theme built with TailwindCSS
+
+---
 
 ## Tech Stack
 
 ### Frontend
-- **React** (JavaScript) - UI library
-- **Vite** - Build tool and dev server
-- **TailwindCSS** - Styling
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **Chart.js** - Data visualization (placeholder ready)
+| Library | Purpose |
+|---|---|
+| React 19 + Vite | UI framework and build tool |
+| TailwindCSS v4 | Utility-first styling |
+| React Router v7 | Client-side routing |
+| Axios | HTTP client |
+| Chart.js + react-chartjs-2 | Score history visualization |
 
 ### Backend
-- **Python FastAPI** - REST API framework
-- **Uvicorn** - ASGI server
-- **SQLAlchemy** - ORM for database
-- **SQLite** - Database (local development, Postgres target for deployment)
-- **PyPDF2** - PDF text extraction
+| Library | Purpose |
+|---|---|
+| Python FastAPI | REST API framework |
+| Uvicorn | ASGI server |
+| SQLAlchemy 2.0 | ORM |
+| SQLite | Database (local development) |
+| PyPDF2 | PDF text extraction |
+| python-jose | JWT token creation and verification |
+| bcrypt | Password hashing |
+| python-dotenv | Environment variable management |
+
+---
 
 ## Project Structure
 
 ```
 study-buddy/
-├── frontend/          # React frontend application
+├── frontend/
 │   ├── src/
-│   │   ├── pages/     # Page components
-│   │   ├── components/ # Reusable components
-│   │   ├── App.jsx    # Main app with routing
-│   │   └── index.css  # Tailwind styles
+│   │   ├── context/        # AuthContext (JWT state)
+│   │   ├── components/     # Navigation, ProtectedRoute
+│   │   ├── pages/          # All page components
+│   │   ├── App.jsx         # Routes
+│   │   └── index.css       # Global styles
 │   └── package.json
-├── backend/           # FastAPI backend application
-│   ├── main.py        # FastAPI app and routes
-│   ├── models.py      # Database models
-│   ├── schemas.py     # Pydantic schemas
-│   ├── database.py    # Database configuration
-│   ├── utils.py       # Helper functions (text extraction + generation logic)
-│   ├── uploads/       # Uploaded files directory
+├── backend/
+│   ├── main.py             # All API routes
+│   ├── models.py           # SQLAlchemy models
+│   ├── schemas.py          # Pydantic request/response schemas
+│   ├── database.py         # DB engine and session
+│   ├── auth.py             # JWT + bcrypt utilities
+│   ├── utils.py            # Text extraction + generation logic
+│   ├── .env                # Secret key (not committed)
+│   ├── uploads/            # Uploaded files
 │   └── requirements.txt
 └── README.md
 ```
 
-## Setup Instructions
+---
+
+## Setup & Running
 
 ### Prerequisites
-- **Node.js** (v16+) and npm
-- **Python** (3.8+) and pip
+- **Node.js** v16+ and npm
+- **Python** 3.8+ and pip
 - **Git**
+
+---
 
 ### 1. Clone the Repository
 
 ```bash
-cd ~/Documents
-git clone <your-repo-url>
-cd study-buddy
+git clone https://github.com/parsamollahoseini/Studdy-buddy-Project.git
+cd Studdy-buddy-Project
 ```
+
+---
 
 ### 2. Backend Setup
 
@@ -77,189 +97,153 @@ cd backend
 # Create virtual environment
 python3 -m venv venv
 
-# Activate virtual environment
-source venv/bin/activate
+# Activate it
+source venv/bin/activate          # Mac/Linux
+# venv\Scripts\activate           # Windows
 
-# Install Python dependencies
+# Install dependencies
 pip install -r requirements.txt
 
-# Start the FastAPI server
+# Create .env file
+echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')" > .env
+
+# Start the server
 uvicorn main:app --reload --port 8000
 ```
 
-The backend will run at: `http://localhost:8000`
+> Backend runs at **http://localhost:8000**  
+> Swagger docs at **http://localhost:8000/docs**
 
-API documentation (Swagger UI): `http://localhost:8000/docs`
+> **Note:** If you change any database models, delete `study_buddy.db` and restart — the DB is auto-created on startup.
+
+---
 
 ### 3. Frontend Setup
 
-Open a new terminal window:
+Open a **new terminal window**:
 
 ```bash
 cd frontend
 
-# Install npm dependencies
+# Install dependencies
 npm install
 
-# Start the development server
+# Start dev server
 npm run dev
 ```
 
-The frontend will run at: `http://localhost:5173`
+> Frontend runs at **http://localhost:5173**
 
-### 4. Test the Application
+---
 
-1. Open your browser and navigate to `http://localhost:5173`
-2. Click "Get Started" to go to the dashboard
-3. Click "Upload Notes" and select a PDF or TXT file
-4. View the extracted text on the note page
-5. Click "Generate Flashcards" — flip through the cards
-6. Click "Generate Quiz from Same Notes" — answer the questions
-7. Submit the quiz and view your score
-8. Visit the Progress page to see your stats
+### 4. First Run
 
-## API Endpoints
+1. Open **http://localhost:5173**
+2. Click **Get Started** → **Create account** to register
+3. Upload a PDF or TXT file
+4. Generate Flashcards or a Quiz from your notes
+5. Visit **Study Session** to review with spaced repetition
+6. Check **Progress** to see your score chart
 
-### Health Check
-```
-GET /api/health
-→ { "status": "healthy", "message": "Study Buddy API is running", "version": "1.0.0" }
-```
+---
 
-### Upload Notes
-```
-POST /api/notes/upload
-Content-Type: multipart/form-data
-Parameters: file (PDF/TXT), title (optional)
-→ { "noteId": 1, "title": "My Notes", "extractedText": "..." }
-```
+## API Reference
 
-### Get Note
-```
-GET /api/notes/{noteId}
-→ { "id": 1, "title": "My Notes", "source_type": "txt", "extracted_text": "...", "created_at": "..." }
-```
+### Auth
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/auth/register` | Register new user, returns JWT |
+| `POST` | `/api/auth/login` | Login, returns JWT |
+| `GET` | `/api/auth/me` | Get current user (requires token) |
 
-### Generate Flashcards
-```
-POST /api/notes/{noteId}/flashcards
-→ [{ "id": 1, "question": "What is ...?", "answer": "...", "created_at": "..." }, ...]
-```
+### Notes
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/notes` | List recent notes |
+| `POST` | `/api/notes/upload` | Upload PDF/TXT file |
+| `GET` | `/api/notes/{noteId}` | Get single note |
 
-### Get Flashcards
-```
-GET /api/notes/{noteId}/flashcards
-→ [{ "id": 1, "question": "...", "answer": "...", "created_at": "..." }, ...]
-```
+### Flashcards
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/notes/{noteId}/flashcards` | Generate flashcards |
+| `GET` | `/api/notes/{noteId}/flashcards` | Get flashcards for a note |
+| `POST` | `/api/flashcards/{id}/review` | Submit SM-2 review rating (0–5) |
+| `GET` | `/api/export/flashcards/{noteId}` | Download flashcards as CSV |
 
-### Generate Quiz
-```
-POST /api/notes/{noteId}/quiz
-→ { "quizId": 1, "title": "Quiz: ...", "questions": [{ "id": 1, "question": "...", "option_a": "...", "option_b": "...", "option_c": "...", "option_d": "...", "correct_option": "A" }] }
-```
+### Quizzes
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/notes/{noteId}/quiz` | Generate quiz |
+| `GET` | `/api/quizzes/{quizId}` | Get quiz with questions |
+| `POST` | `/api/quizzes/{quizId}/results` | Submit answers, get score |
 
-### Get Quiz
-```
-GET /api/quizzes/{quizId}
-→ { "id": 1, "title": "...", "created_at": "...", "questions": [...] }
-```
+### Progress
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/progress` | Overall stats (flashcards, quizzes, avg score) |
+| `GET` | `/api/progress/history` | Last 10 quiz results for chart |
 
-### Submit Quiz Results
-```
-POST /api/quizzes/{quizId}/results
-Body: { "answers": ["A", "C", "B", "D", "A"] }
-→ { "resultId": 1, "score": 80.0, "totalQuestions": 5, "correctAnswers": 4, "noteId": 1 }
-```
+### Study
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/study/due` | Get flashcards due for review today |
 
-### Get Progress
-```
-GET /api/progress
-→ { "totalFlashcards": 9, "totalQuizzes": 1, "averageScore": 80, "studyStreak": 0 }
-```
+---
 
 ## Database Schema
 
-The SQLite database includes the following tables:
+| Table | Key Columns |
+|---|---|
+| `users` | id, name, email, password_hash |
+| `notes` | id, user_id, title, source_type, extracted_text, created_at |
+| `flashcards` | id, note_id, question, answer, created_at |
+| `flashcard_reviews` | id, flashcard_id, user_id, interval, ease_factor, repetitions, next_review_date |
+| `quizzes` | id, note_id, title, created_at |
+| `quiz_questions` | id, quiz_id, question, option_a–d, correct_option |
+| `quiz_results` | id, quiz_id, user_id, score, taken_at |
 
-- **users** - User accounts (for future authentication)
-- **notes** - Uploaded notes and extracted text
-- **flashcards** - Generated flashcards (question + answer)
-- **quizzes** - Generated quizzes
-- **quiz_questions** - Multiple choice questions (A/B/C/D options)
-- **quiz_results** - Quiz attempt results with scores
+---
 
 ## Pages
 
 | Route | Description |
-|-------|-------------|
+|---|---|
 | `/` | Landing page |
-| `/dashboard` | Main dashboard with navigation cards |
+| `/login` | Sign in |
+| `/register` | Create account |
+| `/dashboard` | Main dashboard — stats, recent notes, quick actions |
 | `/upload` | Upload PDF/TXT notes |
-| `/notes/:noteId` | View extracted text + generate flashcards/quiz |
-| `/notes/:noteId/flashcards` | Study flashcards (flip cards) + generate quiz |
-| `/quizzes/:quizId` | Take quiz (multiple choice) |
-| `/quizzes/:quizId/results` | View score + generate flashcards/retake quiz |
-| `/progress` | Progress dashboard (stats from DB) |
-| `/settings` | Settings and about |
+| `/notes/:noteId` | View extracted text, generate flashcards or quiz |
+| `/notes/:noteId/flashcards` | Study flashcards, export CSV |
+| `/quizzes/:quizId` | Take quiz |
+| `/quizzes/:quizId/results` | View score |
+| `/study` | Spaced repetition study session |
+| `/progress` | Progress charts and stats |
+| `/settings` | App info and team |
 
-## Demo Flow
-
-```
-Upload → View Extracted Text
-  ├─→ Generate Flashcards → Flip through cards → Generate Quiz from Same Notes
-  └─→ Generate Quiz → Answer MCQs → Submit → See Score
-        ├─→ Flashcards from Same Notes
-        ├─→ Retake Quiz (New Questions)
-        └─→ Back to Dashboard
-Progress → Real stats (flashcards created, quizzes taken, avg score)
-```
-
-## Running Both Servers
-
-You need two terminal windows:
-
-**Terminal 1 - Backend:**
-```bash
-cd backend
-source venv/bin/activate
-uvicorn main:app --reload --port 8000
-```
-
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
+---
 
 ## Development Notes
 
 - The SQLite database (`study_buddy.db`) is auto-created on first server start
-- Delete `study_buddy.db` and restart the backend if you change database models
+- Delete `study_buddy.db` if you change any model columns (no migration tool)
 - Uploaded files are stored in `backend/uploads/`
-- Flashcard generation uses rule/keyword-based logic (no AI/NLP in Phase 1)
-- Quiz questions are multiple choice with distractors from other flashcard answers
+- The `.env` file must contain `SECRET_KEY` — generate one with `python3 -c "import secrets; print(secrets.token_hex(32))"`
+- Anonymous usage is supported — registration is optional; unregistered users can still upload and generate study materials
 
-## Next Steps
-
-- AI/NLP-powered flashcard and quiz generation
-- User authentication and authorization
-- Chart.js visualizations on progress page
-- PostgreSQL for production deployment
-- Study sessions with spaced repetition
-- Export flashcards to Anki/Quizlet
+---
 
 ## Team — Group T25
 
 | Name | Role |
-|------|------|
+|---|---|
 | **Parsa Mollahoseini** | Project Lead / Full-Stack Developer |
 | **Mehrad Bayat** | Backend Developer |
 | **Kevin George Buhain** | Frontend Developer |
 
-## License
-
-MIT License - Educational project for Capstone II
-
 ---
 
-**Built by Group T25 — Parsa Mollahoseini, Mehrad Bayat, Kevin George Buhain**
+## License
+
+MIT License — Educational project for Capstone II

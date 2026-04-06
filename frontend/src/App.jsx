@@ -8,12 +8,17 @@ import QuizView from './pages/QuizView';
 import QuizResults from './pages/QuizResults';
 import Progress from './pages/Progress';
 import Settings from './pages/Settings';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import StudySession from './pages/StudySession';
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/upload" element={<Upload />} />
         <Route path="/notes/:noteId" element={<NoteView />} />
@@ -22,6 +27,7 @@ function App() {
         <Route path="/quizzes/:quizId/results" element={<QuizResults />} />
         <Route path="/progress" element={<Progress />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/study" element={<StudySession />} />
       </Routes>
     </Router>
   );

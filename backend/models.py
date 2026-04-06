@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -10,6 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), nullable=False)
     email = Column(String(100), unique=True, nullable=False, index=True)
+    password_hash = Column(String(200), nullable=True)
 
     notes = relationship("Note", back_populates="user")
     quiz_results = relationship("QuizResult", back_populates="user")
@@ -81,3 +82,19 @@ class QuizResult(Base):
 
     quiz = relationship("Quiz", back_populates="results")
     user = relationship("User", back_populates="quiz_results")
+
+
+class FlashcardReview(Base):
+    __tablename__ = "flashcard_reviews"
+    __table_args__ = (UniqueConstraint('flashcard_id', 'user_id'),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    flashcard_id = Column(Integer, ForeignKey("flashcards.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    interval = Column(Integer, default=1)
+    ease_factor = Column(Float, default=2.5)
+    repetitions = Column(Integer, default=0)
+    next_review_date = Column(DateTime, default=datetime.utcnow)
+
+    flashcard = relationship("Flashcard", backref="reviews")
+    user = relationship("User")

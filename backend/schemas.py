@@ -115,3 +115,68 @@ class QuizSubmitResponse(BaseModel):
     totalQuestions: int
     correctAnswers: int
     noteId: int
+
+
+# Auth schemas
+class UserRegister(BaseModel):
+    name: str
+    email: str
+    password: str
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+
+    class Config:
+        from_attributes = True
+
+
+# Progress history schemas
+class QuizHistoryItem(BaseModel):
+    quizId: int
+    score: float
+    takenAt: datetime
+    noteTitle: str
+
+
+class ProgressHistoryResponse(BaseModel):
+    history: List[QuizHistoryItem]
+
+
+# Spaced repetition schemas
+class ReviewSubmission(BaseModel):
+    quality: int  # 0-5
+
+
+class ReviewResponse(BaseModel):
+    flashcard_id: int
+    interval: int
+    ease_factor: float
+    next_review_date: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class StudyFlashcardResponse(BaseModel):
+    id: int
+    question: str
+    answer: str
+    note_id: int
+    interval: int
+    ease_factor: float
+
+    class Config:
+        from_attributes = True

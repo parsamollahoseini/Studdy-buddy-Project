@@ -11,76 +11,91 @@ function QuizResults() {
 
   useEffect(() => {
     const stored = localStorage.getItem(`quiz_result_${quizId}`);
-    if (stored) {
-      setResult(JSON.parse(stored));
-    }
+    if (stored) setResult(JSON.parse(stored));
   }, [quizId]);
 
-  const handleRetakeQuiz = async () => {
+  const handleRetake = async () => {
     if (!result) return;
     setGeneratingQuiz(true);
     try {
-      const response = await axios.post(
-        `http://localhost:8000/api/notes/${result.noteId}/quiz`
-      );
-      navigate(`/quizzes/${response.data.quizId}`);
-    } catch {
-      alert('Failed to generate new quiz');
-      setGeneratingQuiz(false);
-    }
+      const r = await axios.post(`http://localhost:8000/api/notes/${result.noteId}/quiz`);
+      navigate(`/quizzes/${r.data.quizId}`);
+    } catch { alert('Failed to generate quiz'); setGeneratingQuiz(false); }
   };
 
-  if (!result) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="flex items-center justify-center py-20 text-gray-600">No results found.</div>
-      </div>
-    );
-  }
+  if (!result) return (
+    <div style={{ minHeight: '100vh', background: '#080818' }}><Navigation />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'rgba(255,255,255,0.4)' }}>No results found.</div>
+    </div>
+  );
+
+  const { score, correctAnswers, totalQuestions, noteId } = result;
+  const getColor = () => score >= 80 ? '#34d399' : score >= 60 ? '#fbbf24' : '#f87171';
+  const getMessage = () => score >= 80 ? 'Excellent work! 🎉' : score >= 60 ? 'Good job! 👍' : 'Keep practicing! 💪';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div style={{ minHeight: '100vh', background: '#080818' }}>
       <Navigation />
-      <div className="container mx-auto px-6 py-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-8">Quiz Results</h1>
+      <div className="container mx-auto px-6 py-12" style={{ maxWidth: 600 }}>
+        <h1 style={{
+          fontSize: '2rem', fontWeight: 800, marginBottom: '2rem',
+          background: 'linear-gradient(135deg, #fff, rgba(255,255,255,0.6))',
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
+        }}>Quiz Results</h1>
 
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white p-12 rounded-lg shadow-md text-center mb-6">
-            <div className="text-6xl font-bold text-blue-600 mb-4">
-              {result.score}%
+        {/* Score card */}
+        <div style={{
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
+          borderRadius: '1.5rem', padding: '3rem 2rem',
+          textAlign: 'center', marginBottom: '1.5rem',
+        }}>
+          {/* Circular score */}
+          <div style={{
+            width: 120, height: 120, borderRadius: '50%',
+            background: `conic-gradient(${getColor()} ${score * 3.6}deg, rgba(255,255,255,0.06) 0deg)`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 1.5rem',
+            boxShadow: `0 0 30px ${getColor()}40`,
+          }}>
+            <div style={{
+              width: 94, height: 94, borderRadius: '50%',
+              background: '#080818',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexDirection: 'column',
+            }}>
+              <span style={{ fontSize: '1.75rem', fontWeight: 800, color: getColor() }}>{score}%</span>
             </div>
-            <p className="text-2xl text-gray-700 mb-2">
-              {result.correctAnswers} out of {result.totalQuestions} correct
-            </p>
-            <p className="text-gray-600">
-              {result.score >= 80 ? 'Excellent work!' : result.score >= 60 ? 'Good job!' : 'Keep practicing!'}
-            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <button
-              onClick={() => navigate(`/notes/${result.noteId}/flashcards`)}
-              className="bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              Flashcards from Same Notes
-            </button>
+          <p style={{ fontSize: '1.5rem', fontWeight: 700, color: 'white', marginBottom: '0.5rem' }}>
+            {correctAnswers} / {totalQuestions} correct
+          </p>
+          <p style={{ color: getColor(), fontWeight: 600, fontSize: '1rem' }}>{getMessage()}</p>
+        </div>
 
-            <button
-              onClick={handleRetakeQuiz}
-              disabled={generatingQuiz}
-              className="bg-green-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-green-700 transition disabled:bg-gray-400"
-            >
-              {generatingQuiz ? 'Generating...' : 'Retake Quiz (New Questions)'}
-            </button>
+        {/* Actions */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem' }}>
+          <button onClick={() => navigate(`/notes/${noteId}/flashcards`)}
+            style={{
+              padding: '1rem', borderRadius: '0.875rem',
+              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
+              color: '#93c5fd', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem',
+            }}>🃏 Flashcards</button>
 
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-gray-600 text-white py-4 px-6 rounded-lg font-semibold hover:bg-gray-700 transition"
-            >
-              Back to Dashboard
-            </button>
-          </div>
+          <button onClick={handleRetake} disabled={generatingQuiz}
+            style={{
+              padding: '1rem', borderRadius: '0.875rem',
+              background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)',
+              color: '#6ee7b7', fontWeight: 600, cursor: generatingQuiz ? 'not-allowed' : 'pointer',
+              fontSize: '0.875rem', opacity: generatingQuiz ? 0.6 : 1,
+            }}>{generatingQuiz ? 'Loading...' : '🔄 Retake'}</button>
+
+          <button onClick={() => navigate('/dashboard')}
+            style={{
+              padding: '1rem', borderRadius: '0.875rem',
+              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)',
+              color: 'rgba(255,255,255,0.6)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem',
+            }}>🏠 Dashboard</button>
         </div>
       </div>
     </div>
