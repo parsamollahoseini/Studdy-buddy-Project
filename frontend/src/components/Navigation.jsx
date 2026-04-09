@@ -42,7 +42,6 @@ function Navigation() {
               { to: '/dashboard', label: 'Dashboard' },
               { to: '/upload', label: 'Upload' },
               { to: '/study', label: 'Study' },
-              { to: '/progress', label: 'Progress' },
               { to: '/settings', label: 'Settings' },
             ].map(({ to, label }) => (
               <Link key={to} to={to} style={{

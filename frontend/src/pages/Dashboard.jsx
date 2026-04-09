@@ -167,7 +167,6 @@ function Dashboard() {
                 {[
                   { to: '/upload', icon: '📤', label: 'Upload Notes', sub: 'PDF or TXT', color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', border: 'rgba(59,130,246,0.2)' },
                   { to: '/study', icon: '🔁', label: 'Study Session', sub: 'Spaced repetition', color: '#fbbf24', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.2)' },
-                  { to: '/progress', icon: '📊', label: 'View Progress', sub: 'Charts & stats', color: '#34d399', bg: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.2)' },
                 ].map(({ to, icon, label, sub, color, bg, border }) => (
                   <Link key={to} to={to} style={{ textDecoration: 'none' }}>
                     <div style={{

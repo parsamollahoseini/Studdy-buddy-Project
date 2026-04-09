@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Upload from './pages/Upload';
@@ -6,7 +6,6 @@ import NoteView from './pages/NoteView';
 import FlashcardsView from './pages/FlashcardsView';
 import QuizView from './pages/QuizView';
 import QuizResults from './pages/QuizResults';
-import Progress from './pages/Progress';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -25,7 +24,7 @@ function App() {
         <Route path="/notes/:noteId/flashcards" element={<FlashcardsView />} />
         <Route path="/quizzes/:quizId" element={<QuizView />} />
         <Route path="/quizzes/:quizId/results" element={<QuizResults />} />
-        <Route path="/progress" element={<Progress />} />
+        <Route path="/progress" element={<Navigate to="/dashboard" replace />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/study" element={<StudySession />} />
       </Routes>
