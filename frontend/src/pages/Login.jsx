@@ -112,6 +112,21 @@ function Login() {
             Create one
           </Link>
         </p>
+
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+          <Link to="/" style={{
+            color: 'rgba(255,255,255,0.65)',
+            padding: '0.45rem 0.9rem',
+            borderRadius: '0.75rem',
+            textDecoration: 'none',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(255,255,255,0.03)',
+          }}>
+            ← Home
+          </Link>
+        </div>
       </div>
     </div>
   );

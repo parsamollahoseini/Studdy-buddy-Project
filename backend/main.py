@@ -65,6 +65,10 @@ async def health_check():
 # Auth
 # ---------------------------------------------------------------------------
 
+DEMO_NAME = "Demo User"
+DEMO_EMAIL = "demo@studybuddy.local"
+DEMO_PASSWORD = "demo-access-only"
+
 @app.post("/api/auth/register", response_model=TokenResponse)
 async def register(data: UserRegister, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == data.email).first()
@@ -78,8 +82,39 @@ async def register(data: UserRegister, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    token = create_access_token({"sub": str(user.id)}, extra_claims={"name": user.name})
+    token = create_access_token({"sub": str(user.id)}, extra_claims={"name": user.name, "demo": True})
     return TokenResponse(access_token=token)
+
+
+@app.post("/api/auth/demo/reset")
+async def reset_demo_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.email != DEMO_EMAIL:
+        raise HTTPException(status_code=403, detail="Demo reset is only available for the demo account")
+
+    note_ids = [note_id for (note_id,) in db.query(Note.id).filter(Note.user_id == current_user.id).all()]
+
+    if note_ids:
+        quiz_ids = [quiz_id for (quiz_id,) in db.query(Quiz.id).filter(Quiz.note_id.in_(note_ids)).all()]
+        flashcard_ids = [flashcard_id for (flashcard_id,) in db.query(Flashcard.id).filter(Flashcard.note_id.in_(note_ids)).all()]
+
+        if quiz_ids:
+            db.query(QuizQuestion).filter(QuizQuestion.quiz_id.in_(quiz_ids)).delete(synchronize_session=False)
+            db.query(QuizResult).filter(QuizResult.quiz_id.in_(quiz_ids)).delete(synchronize_session=False)
+            db.query(Quiz).filter(Quiz.id.in_(quiz_ids)).delete(synchronize_session=False)
+
+        if flashcard_ids:
+            db.query(FlashcardReview).filter(FlashcardReview.flashcard_id.in_(flashcard_ids)).delete(synchronize_session=False)
+
+        db.query(Flashcard).filter(Flashcard.note_id.in_(note_ids)).delete(synchronize_session=False)
+        db.query(Note).filter(Note.id.in_(note_ids)).delete(synchronize_session=False)
+
+    db.query(QuizResult).filter(QuizResult.user_id == current_user.id).delete(synchronize_session=False)
+    db.commit()
+
+    return {"ok": True}
 
 
 @app.post("/api/auth/login", response_model=TokenResponse)
@@ -87,7 +122,25 @@ async def login(data: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not user.password_hash or not verify_password(data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_access_token({"sub": str(user.id)}, extra_claims={"name": user.name})
+    token = create_access_token({"sub": str(user.id)}, extra_claims={"name": user.name, "demo": False})
+    return TokenResponse(access_token=token)
+
+
+@app.post("/api/auth/demo", response_model=TokenResponse)
+async def login_demo(db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == DEMO_EMAIL).first()
+
+    if not user:
+        user = User(
+            name=DEMO_NAME,
+            email=DEMO_EMAIL,
+            password_hash=get_password_hash(DEMO_PASSWORD),
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    token = create_access_token({"sub": str(user.id)}, extra_claims={"name": user.name, "demo": user.email == DEMO_EMAIL})
     return TokenResponse(access_token=token)
 
 
@@ -100,12 +153,30 @@ async def get_me(current_user: User = Depends(get_current_user)):
 # Notes
 # ---------------------------------------------------------------------------
 
+def _get_owned_note_or_404(db: Session, note_id: int, user_id: int) -> Note:
+    note = db.query(Note).filter(Note.id == note_id, Note.user_id == user_id).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    return note
+
+
+def _get_owned_quiz_or_404(db: Session, quiz_id: int, user_id: int) -> Quiz:
+    quiz = (
+        db.query(Quiz)
+        .join(Note, Quiz.note_id == Note.id)
+        .filter(Quiz.id == quiz_id, Note.user_id == user_id)
+        .first()
+    )
+    if not quiz:
+        raise HTTPException(status_code=404, detail="Quiz not found")
+    return quiz
+
 @app.post("/api/notes/upload", response_model=NoteUploadResponse)
 async def upload_note(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     file_type, is_valid = determine_file_type(file.filename)
     if not is_valid:
@@ -138,7 +209,7 @@ async def upload_note(
             title=note_title,
             source_type=file_type,
             extracted_text=extracted_text,
-            user_id=current_user.id if current_user else None,
+            user_id=current_user.id,
         )
         db.add(new_note)
         db.commit()
@@ -158,20 +229,19 @@ async def upload_note(
 @app.get("/api/notes", response_model=List[NoteResponse])
 async def list_notes(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
-    query = db.query(Note).order_by(Note.created_at.desc()).limit(10)
-    if current_user:
-        query = db.query(Note).filter(Note.user_id == current_user.id).order_by(Note.created_at.desc()).limit(10)
+    query = db.query(Note).filter(Note.user_id == current_user.id).order_by(Note.created_at.desc()).limit(10)
     return query.all()
 
 
 @app.get("/api/notes/{noteId}", response_model=NoteResponse)
-async def get_note(noteId: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
-    return note
+async def get_note(
+    noteId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return _get_owned_note_or_404(db, noteId, current_user.id)
 
 
 # ---------------------------------------------------------------------------
@@ -179,10 +249,12 @@ async def get_note(noteId: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.post("/api/notes/{noteId}/flashcards", response_model=List[FlashcardResponse])
-async def create_flashcards(noteId: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+async def create_flashcards(
+    noteId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    note = _get_owned_note_or_404(db, noteId, current_user.id)
 
     cards = generate_flashcards(note.extracted_text)
 
@@ -200,10 +272,12 @@ async def create_flashcards(noteId: int, db: Session = Depends(get_db)):
 
 
 @app.get("/api/notes/{noteId}/flashcards", response_model=List[FlashcardResponse])
-async def get_flashcards(noteId: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+async def get_flashcards(
+    noteId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _get_owned_note_or_404(db, noteId, current_user.id)
     return db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
 
 
@@ -212,10 +286,12 @@ async def get_flashcards(noteId: int, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/notes/{noteId}/quiz-options", response_model=QuizOptionsResponse)
-async def get_quiz_options(noteId: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+async def get_quiz_options(
+    noteId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    note = _get_owned_note_or_404(db, noteId, current_user.id)
 
     existing = db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
     if existing:
@@ -231,10 +307,9 @@ async def create_quiz(
     noteId: int,
     payload: QuizCreateRequest | None = None,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+    note = _get_owned_note_or_404(db, noteId, current_user.id)
 
     existing = db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
     if existing:
@@ -278,11 +353,12 @@ async def create_quiz(
 
 
 @app.get("/api/quizzes/{quizId}", response_model=QuizResponse)
-async def get_quiz(quizId: int, db: Session = Depends(get_db)):
-    quiz = db.query(Quiz).filter(Quiz.id == quizId).first()
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
-    return quiz
+async def get_quiz(
+    quizId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return _get_owned_quiz_or_404(db, quizId, current_user.id)
 
 
 @app.post("/api/quizzes/{quizId}/results", response_model=QuizSubmitResponse)
@@ -290,11 +366,9 @@ async def submit_quiz(
     quizId: int,
     submission: QuizAnswerSubmission,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
-    quiz = db.query(Quiz).filter(Quiz.id == quizId).first()
-    if not quiz:
-        raise HTTPException(status_code=404, detail="Quiz not found")
+    quiz = _get_owned_quiz_or_404(db, quizId, current_user.id)
 
     questions = db.query(QuizQuestion).filter(QuizQuestion.quiz_id == quizId).all()
     if len(submission.answers) != len(questions):
@@ -312,7 +386,7 @@ async def submit_quiz(
 
     result = QuizResult(
         quiz_id=quizId,
-        user_id=current_user.id if current_user else None,
+        user_id=current_user.id,
         score=score,
     )
     db.add(result)
@@ -335,17 +409,15 @@ async def submit_quiz(
 @app.get("/api/progress")
 async def get_progress(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     fc_query = db.query(func.count(Flashcard.id))
     qr_query = db.query(func.count(QuizResult.id))
     avg_query = db.query(func.avg(QuizResult.score))
 
-    if current_user:
-        # Scope flashcards via note ownership
-        fc_query = fc_query.join(Note).filter(Note.user_id == current_user.id)
-        qr_query = qr_query.filter(QuizResult.user_id == current_user.id)
-        avg_query = avg_query.filter(QuizResult.user_id == current_user.id)
+    fc_query = fc_query.join(Note).filter(Note.user_id == current_user.id)
+    qr_query = qr_query.filter(QuizResult.user_id == current_user.id)
+    avg_query = avg_query.filter(QuizResult.user_id == current_user.id)
 
     total_flashcards = fc_query.scalar() or 0
     total_quizzes = qr_query.scalar() or 0
@@ -362,7 +434,7 @@ async def get_progress(
 @app.get("/api/progress/history", response_model=ProgressHistoryResponse)
 async def get_progress_history(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     query = (
         db.query(QuizResult, Quiz, Note)
@@ -371,8 +443,7 @@ async def get_progress_history(
         .order_by(QuizResult.taken_at.desc())
         .limit(10)
     )
-    if current_user:
-        query = query.filter(QuizResult.user_id == current_user.id)
+    query = query.filter(QuizResult.user_id == current_user.id)
 
     rows = query.all()
     history = [
@@ -416,17 +487,19 @@ def _apply_sm2(review: FlashcardReview, quality: int) -> None:
 @app.get("/api/study/due", response_model=List[StudyFlashcardResponse])
 async def get_due_flashcards(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
-    user_id_val = current_user.id if current_user else None
+    user_id_val = current_user.id
 
     rows = (
         db.query(Flashcard, FlashcardReview)
+        .join(Note, Flashcard.note_id == Note.id)
         .outerjoin(
             FlashcardReview,
             (FlashcardReview.flashcard_id == Flashcard.id)
             & (FlashcardReview.user_id == user_id_val),
         )
+        .filter(Note.user_id == current_user.id)
         .filter(
             or_(
                 FlashcardReview.id == None,  # never reviewed
@@ -456,16 +529,21 @@ async def submit_review(
     flashcard_id: int,
     submission: ReviewSubmission,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: User = Depends(get_current_user),
 ):
     if not (0 <= submission.quality <= 5):
         raise HTTPException(status_code=400, detail="Quality must be between 0 and 5")
 
-    fc = db.query(Flashcard).filter(Flashcard.id == flashcard_id).first()
+    fc = (
+        db.query(Flashcard)
+        .join(Note, Flashcard.note_id == Note.id)
+        .filter(Flashcard.id == flashcard_id, Note.user_id == current_user.id)
+        .first()
+    )
     if not fc:
         raise HTTPException(status_code=404, detail="Flashcard not found")
 
-    user_id_val = current_user.id if current_user else None
+    user_id_val = current_user.id
 
     review = (
         db.query(FlashcardReview)
@@ -494,10 +572,12 @@ async def submit_review(
 
 
 @app.get("/api/export/flashcards/{noteId}")
-async def export_flashcards_csv(noteId: int, db: Session = Depends(get_db)):
-    note = db.query(Note).filter(Note.id == noteId).first()
-    if not note:
-        raise HTTPException(status_code=404, detail="Note not found")
+async def export_flashcards_csv(
+    noteId: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _get_owned_note_or_404(db, noteId, current_user.id)
 
     flashcards = db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
 

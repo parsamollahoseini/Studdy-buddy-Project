@@ -35,9 +35,6 @@ function Upload() {
       const response = await axios.post('http://localhost:8000/api/notes/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      localStorage.setItem(`note_${response.data.noteId}`, JSON.stringify({
-        id: response.data.noteId, title: response.data.title, extractedText: response.data.extractedText,
-      }));
       navigate(`/notes/${response.data.noteId}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to upload file');

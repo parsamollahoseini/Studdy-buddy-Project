@@ -34,6 +34,24 @@ function FlashcardsView() {
     } catch { alert('Failed to generate quiz'); setGeneratingQuiz(false); }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await axios.get(`http://localhost:8000/api/export/flashcards/${noteId}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `flashcards_${noteId}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert('Failed to export flashcards');
+    }
+  };
+
   if (loading) return (
     <div style={{ minHeight: '100vh', background: '#080818' }}><Navigation />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', color: 'rgba(255,255,255,0.4)' }}>Loading flashcards...</div>
@@ -167,7 +185,7 @@ function FlashcardsView() {
             }}>
             {generatingQuiz ? 'Generating...' : '🧠 Generate Quiz'}
           </button>
-          <button onClick={() => window.open(`http://localhost:8000/api/export/flashcards/${noteId}`, '_blank')}
+          <button onClick={handleExport}
             style={{
               padding: '0.875rem', borderRadius: '0.75rem',
               background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)',

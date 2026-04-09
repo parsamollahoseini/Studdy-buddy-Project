@@ -15,10 +15,7 @@ function NoteView() {
   useEffect(() => {
     axios.get(`http://localhost:8000/api/notes/${noteId}`)
       .then(r => setNote({ title: r.data.title, extractedText: r.data.extracted_text }))
-      .catch(() => {
-        const stored = localStorage.getItem(`note_${noteId}`);
-        if (stored) setNote(JSON.parse(stored));
-      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [noteId]);
 

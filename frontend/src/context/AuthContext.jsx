@@ -33,7 +33,19 @@ export function AuthProvider({ children }) {
     setToken(newToken);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const currentUser = decodeToken(token);
+    if (token && currentUser?.demo) {
+      try {
+        await axios.post('http://localhost:8000/api/auth/demo/reset');
+      } catch (error) {
+        console.error('Failed to reset demo account during logout', error);
+      }
+    }
+
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('quiz_result_') || key.startsWith('note_'))
+      .forEach(key => localStorage.removeItem(key));
     localStorage.removeItem('access_token');
     setToken(null);
   };

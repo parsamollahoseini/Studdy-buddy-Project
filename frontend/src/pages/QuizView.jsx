@@ -48,6 +48,7 @@ function QuizView() {
   const q = quiz.questions[currentQ];
   const selected = answers[currentQ];
   const allAnswered = Object.keys(answers).length === quiz.questions.length;
+  const currentAnswered = !!selected;
   const progress = ((currentQ + 1) / quiz.questions.length) * 100;
 
   const optionStyle = (letter) => ({
@@ -127,13 +128,16 @@ function QuizView() {
               {submitting ? 'Submitting...' : allAnswered ? 'Submit Quiz ✓' : 'Answer all questions'}
             </button>
           ) : (
-            <button onClick={() => setCurrentQ(q => q + 1)}
+            <button onClick={() => setCurrentQ(q => q + 1)} disabled={!currentAnswered}
               style={{
                 flex: 1, padding: '0.875rem', borderRadius: '0.75rem',
-                background: 'linear-gradient(135deg, #3b82f6, #7c3aed)',
-                border: 'none', color: 'white', cursor: 'pointer', fontWeight: 600,
-                boxShadow: '0 0 16px rgba(99,102,241,0.25)',
-              }}>Next →</button>
+                background: currentAnswered ? 'linear-gradient(135deg, #3b82f6, #7c3aed)' : 'rgba(255,255,255,0.06)',
+                border: 'none',
+                color: currentAnswered ? 'white' : 'rgba(255,255,255,0.3)',
+                cursor: currentAnswered ? 'pointer' : 'not-allowed',
+                fontWeight: 600,
+                boxShadow: currentAnswered ? '0 0 16px rgba(99,102,241,0.25)' : 'none',
+              }}>{currentAnswered ? 'Next →' : 'Select an answer'}</button>
           )}
         </div>
       </div>

@@ -1,12 +1,31 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 
 function Landing() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [demoLoading, setDemoLoading] = useState(false);
+
   const features = [
     { icon: '📤', title: 'Upload Notes', desc: 'PDF and TXT files extracted instantly' },
     { icon: '🃏', title: 'Smart Flashcards', desc: 'Auto-generated from your content' },
     { icon: '🧠', title: 'Adaptive Quizzes', desc: 'Multiple choice with scoring' },
     { icon: '🔁', title: 'Spaced Repetition', desc: 'SM-2 algorithm for retention' },
   ];
+
+  const handleDemoLogin = async () => {
+    setDemoLoading(true);
+    try {
+      const response = await axios.post('http://localhost:8000/api/auth/demo');
+      login(response.data.access_token);
+      navigate('/dashboard');
+    } catch {
+      alert('Failed to open demo account');
+      setDemoLoading(false);
+    }
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#080818', color: 'white', overflow: 'hidden' }}>
@@ -105,15 +124,16 @@ function Landing() {
           }}>
             Start for free →
           </Link>
-          <Link to="/dashboard" style={{
+          <button onClick={handleDemoLogin} disabled={demoLoading} style={{
             background: 'rgba(255,255,255,0.06)',
             border: '1px solid rgba(255,255,255,0.12)',
             color: 'rgba(255,255,255,0.8)', padding: '0.85rem 2rem',
-            borderRadius: '0.75rem', textDecoration: 'none', fontWeight: 600,
-            fontSize: '1rem', display: 'inline-block',
+            borderRadius: '0.75rem', fontWeight: 600,
+            fontSize: '1rem', display: 'inline-block', cursor: demoLoading ? 'wait' : 'pointer',
+            opacity: demoLoading ? 0.75 : 1,
           }}>
-            View Demo
-          </Link>
+            {demoLoading ? 'Opening Demo...' : 'View Demo'}
+          </button>
         </div>
       </div>
 
