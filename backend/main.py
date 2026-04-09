@@ -13,7 +13,7 @@ from database import engine, get_db, Base
 from models import Note, Flashcard, Quiz, QuizQuestion, QuizResult, User, FlashcardReview
 from schemas import (
     NoteUploadResponse, NoteResponse, FlashcardResponse,
-    QuizCreateResponse, QuizQuestionResponse, QuizResponse,
+    QuizCreateRequest, QuizCreateResponse, QuizOptionsResponse, QuizQuestionResponse, QuizResponse,
     QuizAnswerSubmission, QuizSubmitResponse,
     UserRegister, UserLogin, TokenResponse, UserResponse,
     QuizHistoryItem, ProgressHistoryResponse,
@@ -211,8 +211,27 @@ async def get_flashcards(noteId: int, db: Session = Depends(get_db)):
 # Quiz
 # ---------------------------------------------------------------------------
 
+@app.get("/api/notes/{noteId}/quiz-options", response_model=QuizOptionsResponse)
+async def get_quiz_options(noteId: int, db: Session = Depends(get_db)):
+    note = db.query(Note).filter(Note.id == noteId).first()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    existing = db.query(Flashcard).filter(Flashcard.note_id == noteId).all()
+    if existing:
+        max_questions = len(existing)
+    else:
+        max_questions = len(generate_flashcards(note.extracted_text))
+
+    return QuizOptionsResponse(maxQuestions=max_questions)
+
+
 @app.post("/api/notes/{noteId}/quiz", response_model=QuizCreateResponse)
-async def create_quiz(noteId: int, db: Session = Depends(get_db)):
+async def create_quiz(
+    noteId: int,
+    payload: QuizCreateRequest | None = None,
+    db: Session = Depends(get_db),
+):
     note = db.query(Note).filter(Note.id == noteId).first()
     if not note:
         raise HTTPException(status_code=404, detail="Note not found")
@@ -225,7 +244,8 @@ async def create_quiz(noteId: int, db: Session = Depends(get_db)):
         for c in fc_dicts:
             db.add(Flashcard(note_id=noteId, question=c["question"], answer=c["answer"]))
 
-    quiz_questions = generate_quiz_questions(note.extracted_text, fc_dicts)
+    requested_count = payload.questionCount if payload else None
+    quiz_questions = generate_quiz_questions(note.extracted_text, fc_dicts, requested_count)
 
     quiz = Quiz(note_id=noteId, title=f"Quiz: {note.title}")
     db.add(quiz)

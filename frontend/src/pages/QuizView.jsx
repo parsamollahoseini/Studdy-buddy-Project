@@ -24,7 +24,11 @@ function QuizView() {
     try {
       const answersArray = quiz.questions.map((_, i) => answers[i] || '');
       const r = await axios.post(`http://localhost:8000/api/quizzes/${quizId}/results`, { answers: answersArray });
-      localStorage.setItem(`quiz_result_${quizId}`, JSON.stringify(r.data));
+      localStorage.setItem(`quiz_result_${quizId}`, JSON.stringify({
+        ...r.data,
+        answers: answersArray,
+        quiz: quiz,
+      }));
       navigate(`/quizzes/${quizId}/results`);
     } catch { alert('Failed to submit quiz'); setSubmitting(false); }
   };

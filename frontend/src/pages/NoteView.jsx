@@ -7,6 +7,8 @@ function NoteView() {
   const { noteId } = useParams();
   const navigate = useNavigate();
   const [note, setNote] = useState(null);
+  const [maxQuestions, setMaxQuestions] = useState(0);
+  const [questionCount, setQuestionCount] = useState(1);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(null);
 
@@ -20,6 +22,20 @@ function NoteView() {
       .finally(() => setLoading(false));
   }, [noteId]);
 
+  useEffect(() => {
+    axios.get(`http://localhost:8000/api/notes/${noteId}/quiz-options`)
+      .then(r => {
+        const max = Math.max(1, r.data.maxQuestions || 1);
+        const minimum = Math.min(5, max);
+        setMaxQuestions(max);
+        setQuestionCount(current => Math.min(Math.max(current, minimum), max));
+      })
+      .catch(() => {
+        setMaxQuestions(1);
+        setQuestionCount(1);
+      });
+  }, [noteId]);
+
   const handleFlashcards = async () => {
     setGenerating('flashcards');
     try {
@@ -31,7 +47,7 @@ function NoteView() {
   const handleQuiz = async () => {
     setGenerating('quiz');
     try {
-      const r = await axios.post(`http://localhost:8000/api/notes/${noteId}/quiz`);
+      const r = await axios.post(`http://localhost:8000/api/notes/${noteId}/quiz`, { questionCount });
       navigate(`/quizzes/${r.data.quizId}`);
     } catch { alert('Failed to generate quiz'); setGenerating(null); }
   };
@@ -95,9 +111,40 @@ function NoteView() {
 
         <div style={{
           background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '1.5rem',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem',
+        }}>
+          <div>
+            <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.2rem' }}>Quiz length</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }}>
+              Choose between {Math.min(5, maxQuestions)} and {maxQuestions} question{maxQuestions === 1 ? '' : 's'}, based on your flashcards.
+            </div>
+          </div>
+          <select
+            value={questionCount}
+            onChange={e => setQuestionCount(Number(e.target.value))}
+            disabled={!!generating || maxQuestions < 1}
+            style={{
+              background: 'rgba(8,8,24,0.9)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'white',
+              borderRadius: '0.75rem',
+              padding: '0.45rem 0.65rem',
+              minWidth: 72,
+              fontSize: '0.85rem',
+            }}
+          >
+            {Array.from({ length: maxQuestions - Math.min(5, maxQuestions) + 1 }, (_, i) => i + Math.min(5, maxQuestions)).map(count => (
+              <option key={count} value={count}>{count}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
           borderRadius: '1.25rem', padding: '1.75rem',
         }}>
-          <h2 style={{ fontWeight: 700, fontSize: '1rem', color: 'rgba(255,255,255,0.5)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
+          <h2 style={{ fontWeight: 700, color: 'rgba(255,255,255,0.5)', marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.75rem' }}>
             Extracted Text
           </h2>
           <div style={{

@@ -144,7 +144,7 @@ function Dashboard() {
                           color: '#93c5fd', cursor: 'pointer',
                         }}>Cards</button>
                       <button
-                        onClick={e => { e.stopPropagation(); axios.post(`http://localhost:8000/api/notes/${note.id}/quiz`).then(r => navigate(`/quizzes/${r.data.quizId}`)); }}
+                        onClick={e => { e.stopPropagation(); navigate(`/notes/${note.id}`); }}
                         style={{
                           padding: '0.3rem 0.7rem', borderRadius: '0.5rem', fontSize: '0.7rem', fontWeight: 600,
                           background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)',

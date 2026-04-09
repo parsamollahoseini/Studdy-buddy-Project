@@ -149,28 +149,37 @@ GENERIC_DISTRACTORS = [
 ]
 
 
-def generate_quiz_questions(text: str, flashcards: List[dict]) -> List[dict]:
+def generate_quiz_questions(text: str, flashcards: List[dict], question_count: int | None = None) -> List[dict]:
     if not flashcards:
         return []
 
-    source = flashcards[:5]
-    all_answers = [fc["answer"] for fc in flashcards]
+    minimum_count = 5 if len(flashcards) >= 5 else 1
+    requested_count = question_count if question_count and question_count > 0 else 5
+    requested_count = max(requested_count, minimum_count)
+    final_count = min(requested_count, len(flashcards))
+    source = random.sample(flashcards, final_count)
     questions = []
 
-    for i, fc in enumerate(source):
+    for fc in source:
         correct = fc["answer"]
         if len(correct) > 120:
             correct = correct[:117] + "..."
 
         # Build distractors from other flashcard answers + generic pool
-        other_answers = [a for j, a in enumerate(all_answers) if j != i and a != correct]
+        other_answers = []
+        for other_fc in flashcards:
+            answer = other_fc["answer"]
+            truncated = answer if len(answer) <= 120 else answer[:117] + "..."
+            if other_fc["question"] != fc["question"] and truncated != correct and truncated not in other_answers:
+                other_answers.append(truncated)
+
+        random.shuffle(other_answers)
         distractors = []
-        for a in other_answers:
+        for answer in other_answers:
             if len(distractors) >= 3:
                 break
-            truncated = a if len(a) <= 120 else a[:117] + "..."
-            if truncated != correct and truncated not in distractors:
-                distractors.append(truncated)
+            if answer not in distractors:
+                distractors.append(answer)
 
         pool = list(GENERIC_DISTRACTORS)
         random.shuffle(pool)
@@ -193,4 +202,5 @@ def generate_quiz_questions(text: str, flashcards: List[dict]) -> List[dict]:
             "correct_option": correct_letter,
         })
 
+    random.shuffle(questions)
     return questions

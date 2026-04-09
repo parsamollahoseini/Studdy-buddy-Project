@@ -12,10 +12,16 @@ function FlashcardsView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [generatingQuiz, setGeneratingQuiz] = useState(false);
+  const [questionCount, setQuestionCount] = useState(1);
 
   useEffect(() => {
     axios.get(`http://localhost:8000/api/notes/${noteId}/flashcards`)
-      .then(r => setFlashcards(r.data))
+      .then(r => {
+        setFlashcards(r.data);
+        const max = Math.max(1, r.data.length || 1);
+        const minimum = Math.min(5, max);
+        setQuestionCount(current => Math.min(Math.max(current, minimum), max));
+      })
       .catch(() => setError('Failed to load flashcards.'))
       .finally(() => setLoading(false));
   }, [noteId]);
@@ -23,7 +29,7 @@ function FlashcardsView() {
   const handleGenerateQuiz = async () => {
     setGeneratingQuiz(true);
     try {
-      const r = await axios.post(`http://localhost:8000/api/notes/${noteId}/quiz`);
+      const r = await axios.post(`http://localhost:8000/api/notes/${noteId}/quiz`, { questionCount });
       navigate(`/quizzes/${r.data.quizId}`);
     } catch { alert('Failed to generate quiz'); setGeneratingQuiz(false); }
   };
@@ -116,6 +122,38 @@ function FlashcardsView() {
               color: current === flashcards.length - 1 ? 'rgba(255,255,255,0.2)' : 'white',
               cursor: current === flashcards.length - 1 ? 'not-allowed' : 'pointer', fontWeight: 600,
             }}>Next →</button>
+        </div>
+
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          gap: '1rem', marginTop: '1.5rem', marginBottom: '1rem',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '1rem', padding: '0.9rem 1rem',
+        }}>
+          <div>
+            <div style={{ color: 'white', fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.15rem' }}>Quiz length</div>
+            <div style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.78rem' }}>
+              Choose between {Math.min(5, flashcards.length)} and {flashcards.length} question{flashcards.length === 1 ? '' : 's'}.
+            </div>
+          </div>
+          <select
+            value={questionCount}
+            onChange={e => setQuestionCount(Number(e.target.value))}
+            disabled={generatingQuiz}
+            style={{
+              background: 'rgba(8,8,24,0.9)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              color: 'white',
+              borderRadius: '0.75rem',
+              padding: '0.45rem 0.65rem',
+              minWidth: 72,
+              fontSize: '0.85rem',
+            }}
+          >
+            {Array.from({ length: flashcards.length - Math.min(5, flashcards.length) + 1 }, (_, i) => i + Math.min(5, flashcards.length)).map(count => (
+              <option key={count} value={count}>{count}</option>
+            ))}
+          </select>
         </div>
 
         {/* Actions */}

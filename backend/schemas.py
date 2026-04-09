@@ -73,6 +73,10 @@ class QuizCreate(BaseModel):
     title: str
 
 
+class QuizCreateRequest(BaseModel):
+    questionCount: Optional[int] = None
+
+
 class QuizResponse(BaseModel):
     id: int
     title: str
@@ -88,6 +92,10 @@ class QuizCreateResponse(BaseModel):
     quizId: int
     title: str
     questions: List[QuizQuestionResponse] = []
+
+
+class QuizOptionsResponse(BaseModel):
+    maxQuestions: int
 
 
 class QuizResultCreate(BaseModel):
